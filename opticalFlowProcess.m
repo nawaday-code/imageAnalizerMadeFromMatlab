@@ -66,7 +66,6 @@ classdef opticalFlowProcess < handle
                 case 'raw'
                     this.imgSource = img3D;
                     medianImg= medfilt3(this.imgSource);
-                    fprintf('medianImgSize: %d', size(medianImg))
                     this.setImg(medianImg, "setTo",'medianFiltered');
                 case 'medianFiltered'
                     this.medianFiltered = img3D;
@@ -212,6 +211,7 @@ classdef opticalFlowProcess < handle
 
         function calcOpticalFlow(this)
             disp('calcurate start ...')
+            fprintf('binaryMaskSize: %d', size(this.binaryMask.binaryMaskResult))
             [u, v] = scripts.opticalFlowHandler.lkofloop(this.binaryMask.binaryMaskResult, 'v');
             uv = sqrt(u.*u+v.*v);
             this.setImg(uv, 'setTo', 'opticalFlow');

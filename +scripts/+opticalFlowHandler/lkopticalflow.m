@@ -7,7 +7,7 @@ function [u,v] = lkopticalflow(Input,p,mode)
 %Data acquisition
 
 if mode == 'd'
-    
+    disp(p)
     im1=single(Input(:,:,1));
     im2=single(Input(:,:,p));
     
@@ -91,7 +91,7 @@ for p = 1:numLevels
                   Ft = ft(2:window-1,2:window-1)';
 
                   A = [Fx(:) Fy(:)];      
-                  G=A'*A;
+                  G=A'*A; %transpose and multiple 
               
                   G(1,1)=G(1,1)+alpha; G(2,2)=G(2,2)+alpha;
                   U=1/(G(1,1)*G(2,2)-G(1,2)*G(2,1))*[G(2,2) -G(1,2);-G(2,1) G(1,1)]*A'*-Ft(:);
