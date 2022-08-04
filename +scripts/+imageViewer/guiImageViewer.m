@@ -29,7 +29,7 @@ classdef guiImageViewer < handle
         currentDisplaySource
         currentPreview
 
-        histogrammer
+        gradationer
     end
 
     events
@@ -37,25 +37,25 @@ classdef guiImageViewer < handle
     end
     
     methods (Access = public)
-        function this = guiImageViewer(constractParam)
+        function this = guiImageViewer(constructParam)
             arguments
-                constractParam.figure = []
-                constractParam.parent = []
-                constractParam.isReadingDICOM = false
-                constractParam.image3D = []
+                constructParam.figure = []
+                constructParam.parent = []
+                constructParam.isReadingDICOM = false
+                constructParam.image3D = []
             end
 
-            if isempty(constractParam.figure)&&isempty(constractParam.parent)
+            if isempty(constructParam.figure)&&isempty(constructParam.parent)
                 this.baseFigure = uifigure('Position',[10,10,800,650]);
                 this.parent = this.baseFigure;
-            elseif isempty(constractParam.figure)&& ~isempty(constractParam.parent)
+            elseif isempty(constructParam.figure)&& ~isempty(constructParam.parent)
                 error('parentのみを指定することはできません')
-            elseif ~isempty(constractParam.figure) && isempty(constractParam.parent)
-                this.baseFigure = constractParam.figure;
+            elseif ~isempty(constructParam.figure) && isempty(constructParam.parent)
+                this.baseFigure = constructParam.figure;
                 this.parent = this.baseFigure;
-            elseif ~isempty(constractParam.figure) && ~isempty(constractParam.parent)
-                this.baseFigure = constractParam.figure;
-                this.parent = constractParam.parent;
+            elseif ~isempty(constructParam.figure) && ~isempty(constructParam.parent)
+                this.baseFigure = constructParam.figure;
+                this.parent = constructParam.parent;
             else
                 error('予期せぬ引数指定がされています')
             end
@@ -74,18 +74,18 @@ classdef guiImageViewer < handle
 
 
             %引数オプションで、下2つはいずれかしか選択できないのであえてこの書き方にしています
-            if constractParam.isReadingDICOM
+            if constructParam.isReadingDICOM
                 dcmHandler = scripts.dicomHandler.DICOMHandler();
                 dcmHandler.readDICOMDIR();
                 this.image3D = dcmHandler.readAllImage();
 
                 this.mountDisplay();
-                this.spawnWindowChangeListener(this.histogrammer);
-            elseif ~isempty(constractParam.image3D)
-                this.image3D = constractParam.image3D;
+                this.spawnWindowChangeListener(this.gradationer);
+            elseif ~isempty(constructParam.image3D)
+                this.image3D = constructParam.image3D;
 
                 this.mountDisplay();
-                this.spawnWindowChangeListener(this.histogrammer);
+                this.spawnWindowChangeListener(this.gradationer);
             end
             
 
@@ -97,45 +97,9 @@ classdef guiImageViewer < handle
             drawnow;
         end
 
-
-        %rescaleやimadjustを使わずにわざわざ作成しました。理由は強度イメージデータが扱いにくいと感じたためです。
-        %imadjustを仕様する場合、doubleの強度イメージデータをuint8に変更すれば
-        %contrast stretchも効かせられて良いかもしれませんが、変換が無駄だと考えています。
-        %categoryのみに階調処理をかけて計算速度を向上させる予定。
-        function convertedData = applyToneCurve(this, preConvertData, windowMin, windowMax, option)
-            arguments
-                this
-                preConvertData
-                windowMin
-                windowMax
-                option.brightness = 0
-                option.gamma = 1
-            end
-            
-            %arrayfunよりもベクトル化を採用
-            
-            convertedGOGToneCurve = this.gogToneCurveFunc(preConvertData, windowMin, windowMax, option.brightness, option.gamma);
-
-            %なんとこれで最低値以下のものを最低値で飽和させることができます
-            saturatedMin = max(convertedGOGToneCurve, 0);
-            %最大値の場合も同様
-            saturatedMax = min(saturatedMin, 255);
-
-            convertedData = uint8(round(saturatedMax));
-        end
-
-        function converted = gogToneCurveFunc(~, rawData, wMin, wMax, brightness, gamma)
-            delta = 255 / (wMax - wMin);
-            intercept = brightness - wMin*delta;
-            converted = (rawData.*delta + intercept).^gamma;
-        end
-
-        %contrast Stretch 機能（ウィンドウ自動調整機能）は後々実装します。
-        
-
         function updateImage(this)
-            this.currentPreview = this.applyToneCurve(this.currentDisplaySource, this.histogrammer.xMin, this.histogrammer.xMax);
-%             this.preview.ImageSource = cat(3, this.currentPreview, this.currentPreview ,this.currentPreview);
+            this.gradationer.setData(this.currentDisplaySource);
+            this.currentPreview = this.gradationer.applyToneCurve();
             this.preview = imshow(this.currentPreview, 'Parent',this.previewAx);
             drawnow;
         end
@@ -172,23 +136,15 @@ classdef guiImageViewer < handle
 
         function mountDisplay(this)
             this.currentDisplaySource = this.image3D(:,:,1);
-            this.histogrammer.setData(this.currentDisplaySource);
-            this.histogrammer.createBoundsSetLine();
+            this.gradationer.setData(this.currentDisplaySource);
             this.updateImage();
-            imDimension = size(this.image3D);
-            sliceNum = imDimension(3);
-            set(this.sliceSlider, 'Limits', [1, sliceNum]);
+            set(this.sliceSlider, 'Limits', [1, size(this.image3D, 3)]);
             
         end
 
         function spawnWindowChangeListener(this, nobinHistogrammerInstance)
             addlistener(nobinHistogrammerInstance, ...
-                'changeArea', @applyWindowToImg);
-            function applyWindowToImg(src, ~)
-                this.currentWindowMin = src.xMin;
-                this.currentWindowMax = src.xMax;
-                this.updateImage();
-            end
+                'changeArea', @(src, event) updateImage(this));
         end
 
         function createPreviewComponents(this)
@@ -217,7 +173,9 @@ classdef guiImageViewer < handle
         end
 
         function createHistComponents(this)
-            this.histogrammer = scripts.measureTools.nobinHistogrammer('parent', this.parent, 'baseFig', this.baseFigure, ...
+            this.gradationer = scripts.imageViewer.gradationProcessor( ...
+                'parent', this.parent, ...
+                'baseFig', this.baseFigure, ...
                 'Position', [this.histPos(1), this.histPos(2), this.histPos(3), this.histPos(4)]);
         end
 

@@ -125,7 +125,7 @@ classdef opticalFlowProcess < handle
 
             this.binaryMaskImgView = scripts.imageViewer.guiImageViewer("figure", this.baseFigure, "parent", binaryMaskImgPanel);
 
-            this.opticalflowView = scripts.imageViewer.guiImageViewer("figure", this.baseFigure, "parent", opticalflowPanel);
+            this.opticalflowView = scripts.imageViewer.opticalFlowViewer("figure", this.baseFigure, "parent", opticalflowPanel);
 
             areaWidth = 650;
             areaHeight = 500;
@@ -210,11 +210,21 @@ classdef opticalFlowProcess < handle
         end
 
         function calcOpticalFlow(this)
-            disp('calcurate start ...')
-            fprintf('binaryMaskSize: %d', size(this.binaryMask.binaryMaskResult))
-            [u, v] = scripts.opticalFlowHandler.lkofloop(this.binaryMask.binaryMaskResult, 'v');
-            uv = sqrt(u.*u+v.*v);
-            this.setImg(uv, 'setTo', 'opticalFlow');
+            optFlowLK = opticalFlowLK("NoiseThreshold", 0.1);
+            inputSize = size(this.binaryMask.binaryMaskResult);
+            this.opticalFlowImg = zeros(inputSize);
+            
+            for i = 1:inputSize(3)
+                flow = estimateFlow(optFlowLK, this.binaryMask.binaryMaskResult(:,:,i));
+                this.opticalFlowImg(:,:,i) = flow.Magnitude;
+            end
+            f = reshape(this.opticalFlowImg(:,:,1), [1, numel(this.opticalFlowImg(:,:,1))]);
+            [category, ~, ic] = unique(f);
+            disp(size([category, groupcounts(ic)']))
+            
+            
+%             categorical(reshape(this.opticalFlowImg(:,:,1), [1, numel(this.opticalFlowImg(:,:,1))]))
+            this.setImg(this.opticalFlowImg, "setTo", 'opticalFlow');
         end
 
 
