@@ -9,6 +9,8 @@ classdef binaryMaskManager < handle
         imgViewer
         histogrammer
         threshold
+
+        binaryArea
         
         binaryMaskResult
     end
@@ -82,10 +84,10 @@ classdef binaryMaskManager < handle
 
         function makeBinaryMaskImg(this)
             this.threshold = this.histogrammer.threshold;
-            binaryArea = this.image3D;
-            binaryArea(binaryArea < this.threshold) = 0;
-            binaryArea(binaryArea ~= 0) = 1;
-            this.binaryMaskResult = this.image3D .* binaryArea;
+            this.binaryArea = this.image3D;
+            this.binaryArea(this.binaryArea < this.threshold) = 0;
+            this.binaryArea(this.binaryArea ~= 0) = 1;
+            this.binaryMaskResult = this.image3D .* this.binaryArea;
             this.imgViewer.setImages(this.binaryMaskResult);
         end
 

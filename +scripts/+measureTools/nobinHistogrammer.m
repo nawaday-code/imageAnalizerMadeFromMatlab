@@ -18,6 +18,7 @@ classdef nobinHistogrammer < handle
     properties(Access = public)
         sourceArray = []
         sourceShape = []
+        sourceArray3D = []
 
         histX 
         histY
@@ -27,6 +28,9 @@ classdef nobinHistogrammer < handle
 
         baseXMin = []
         baseXMax = []
+
+        baseXMindim3 = []
+        baseXMaxdim3 = []
 
         baseFig
         parent
@@ -89,6 +93,21 @@ classdef nobinHistogrammer < handle
             [this.baseXMin, this.baseXMax]= bounds(this.histX);
 
             createHistogram(this);
+
+        end
+
+        %以下を用いて作られるhistogramは3Dデータすべてのhistogramなので注意
+        function set3DData(this, array3D)
+            this.sourceArray3D = array3D;
+            this.sourceShape = size(array3D);
+            
+            [this.histX, this.sortedIndex4source, this.sourceValuePosition] = unique(this.sourceArray);
+            this.histY = accumarray(this.sourceValuePosition, 1);
+
+            [this.baseXMin, this.baseXMax]= bounds(this.histX);
+
+            createHistogram(this);
+
 
         end
 

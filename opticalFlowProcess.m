@@ -218,13 +218,10 @@ classdef opticalFlowProcess < handle
                 flow = estimateFlow(optFlowLK, this.binaryMask.binaryMaskResult(:,:,i));
                 this.opticalFlowImg(:,:,i) = flow.Magnitude;
             end
-            f = reshape(this.opticalFlowImg(:,:,1), [1, numel(this.opticalFlowImg(:,:,1))]);
-            [category, ~, ic] = unique(f);
-            disp(size([category, groupcounts(ic)']))
-            
-            
-%             categorical(reshape(this.opticalFlowImg(:,:,1), [1, numel(this.opticalFlowImg(:,:,1))]))
-            this.setImg(this.opticalFlowImg, "setTo", 'opticalFlow');
+
+            testImg = partlyColorFusion3D(this.imgSource, this.opticalFlowImg, this.binaryMask.binaryArea);
+
+            this.setImg(testImg, "setTo", 'opticalFlow');
         end
 
 

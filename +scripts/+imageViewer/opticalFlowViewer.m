@@ -8,7 +8,6 @@ classdef opticalFlowViewer < handle
         baseFigure
         parent
         flow3D
-        cmap = colormap('jet');
     end
     
     methods (Access = public)
@@ -45,15 +44,14 @@ classdef opticalFlowViewer < handle
 
         function updateImage(this)
             this.preview = imshow(this.currentDisplay, ...
-                'Parent', this.previewAx, ...
-                'colormap', this.cmap);
+                'Parent', this.previewAx);
             drawnow;
         end
 
         function setImages(this, flow3D)
             this.flow3D = flow3D;
-            this.currentDisplay = this.flow3D(:,:,1);
-            this.sliceSlider.Limits = [1, size(flow3D, 3)];
+            this.currentDisplay = this.flow3D(:,:,:,1);
+            this.sliceSlider.Limits = [1, size(flow3D, 4)];
             this.sliceSlider.Enable = 'on';
             this.updateImage();
         end
@@ -90,7 +88,7 @@ classdef opticalFlowViewer < handle
 
             function sliceChanging(this, event)
                 this.sliceNum = round(event.Value);
-                this.currentDisplay = this.flow3D(:,:,this.sliceNum);
+                this.currentDisplay = this.flow3D(:,:,:,this.sliceNum);
                 this.updateImage()
             end
         end
