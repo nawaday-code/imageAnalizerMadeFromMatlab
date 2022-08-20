@@ -101,10 +101,11 @@ classdef nobinHistogrammer < handle
             this.sourceArray3D = array3D;
             this.sourceShape = size(array3D);
             
-            [this.histX, this.sortedIndex4source, this.sourceValuePosition] = unique(this.sourceArray);
+            [this.histX, this.sortedIndex4source, this.sourceValuePosition] = unique(this.sourceArray3D);
             this.histY = accumarray(this.sourceValuePosition, 1);
 
             [this.baseXMin, this.baseXMax]= bounds(this.histX);
+
 
             createHistogram(this);
 

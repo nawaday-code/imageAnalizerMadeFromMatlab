@@ -3,6 +3,8 @@ classdef roiManager < handle
         baseFigure
         parent
         image3D
+        imgWidth
+        imgHeight
         imgViewer
         roiResult
     end
@@ -12,37 +14,42 @@ classdef roiManager < handle
     end
 
     methods(Access = public)
-        function this = roiManager(constractParam)
+        function this = roiManager(constructParam)
             arguments
-                constractParam.figure = []
-                constractParam.parent = []
-                constractParam.image3D = []
+                constructParam.figure = []
+                constructParam.parent = []
+                constructParam.image3D = []
+                constructParam.imageWidth = -1
+                constructParam.imageHeight = -1
             end
 
-            if isempty(constractParam.figure)&&isempty(constractParam.parent)
+            if isempty(constructParam.figure)&&isempty(constructParam.parent)
                 this.baseFigure = uifigure('Position',[50,50,1200,700]);
                 this.parent = this.baseFigure;
-            elseif isempty(constractParam.figure)&& ~isempty(constractParam.parent)
+            elseif isempty(constructParam.figure)&& ~isempty(constructParam.parent)
                 error('parentのみを指定することはできません')
-            elseif ~isempty(constractParam.figure) && isempty(constractParam.parent)
-                this.baseFigure = constractParam.figure;
+            elseif ~isempty(constructParam.figure) && isempty(constructParam.parent)
+                this.baseFigure = constructParam.figure;
                 this.parent = this.baseFigure;
-            elseif ~isempty(constractParam.figure) && ~isempty(constractParam.parent)
-                this.baseFigure = constractParam.figure;
-                this.parent = constractParam.parent;
+            elseif ~isempty(constructParam.figure) && ~isempty(constructParam.parent)
+                this.baseFigure = constructParam.figure;
+                this.parent = constructParam.parent;
             else
                 error('予期せぬ引数指定がされています')
             end
 
-            if isempty(constractParam.image3D)
+            if isempty(constructParam.image3D)
                 this.image3D = ones([100,100,3]);
             else
-                this.image3D = constractParam.image3D;
+                this.image3D = constructParam.image3D;
             end
 
             this.undoCount = 1;
             this.undoCell{this.undoCount} = this.image3D;
+            this.imgWidth = constructParam.imageWidth;
+            this.imgHeight = constructParam.imageHeight;
             createComponents(this);
+
         end
     end
 
@@ -58,7 +65,12 @@ classdef roiManager < handle
         function createComponents(this)
             availableArea = this.parent.Position;
             previewPanel = uipanel(this.parent, "Position",[0,0,round(availableArea(3)*5/6), availableArea(4)]);
-            this.imgViewer = scripts.imageViewer.guiImageViewer("figure",this.baseFigure, "parent", previewPanel, "image3D", this.image3D);
+            this.imgViewer = scripts.imageViewer.guiImageViewer( ...
+                "figure",this.baseFigure, ...
+                "parent", previewPanel, ...
+                "image3D", this.image3D, ...
+                "imageWidth",this.imgWidth, ...
+                "imageHeight", this.imgHeight);
             
             buttonWidth = 100;
             buttonHeight = 50;
@@ -88,12 +100,10 @@ classdef roiManager < handle
                 "Text",sprintf("confirm \n ROI setting"));
         end
 
-%         function spawnSliceChangeListener(this)
-%             addlistener(this.imgViewer, 'changeSlice', @applyROI)
-%             function applyROI(~, ~)
-%                 
-%             end
-%         end
+        function updatePreview(this)
+            this.imgViewer.changeWindow();
+            this.imgViewer.drawImg();
+        end
 
         function roiSet(this)
             roiFreehand = drawpolygon("Parent",this.imgViewer.getPreviewAx);
@@ -106,7 +116,8 @@ classdef roiManager < handle
 
             this.undoCell{this.undoCount} = this.undoCell{this.undoCount - 1} .* roiMask;
             
-            this.imgViewer.setImages(this.undoCell{this.undoCount});
+            this.imgViewer.setImg3D(this.undoCell{this.undoCount});
+            this.updatePreview();
         end
 
         function undoProcess(this)
@@ -125,7 +136,8 @@ classdef roiManager < handle
                 this.redoCount = this.redoCount + 1;
                 this.redoCell{this.redoCount} = pop;
 
-                this.imgViewer.setImages(this.undoCell{this.undoCount});
+                this.imgViewer.setImg3D(this.undoCell{this.undoCount});
+                this.updatePreview();
             catch
                 return
             end
@@ -145,7 +157,8 @@ classdef roiManager < handle
                 this.undoCell{this.undoCount} = pop;
 
                 
-                this.imgViewer.setImages(this.undoCell{this.undoCount});
+                this.imgViewer.setImg3D(this.undoCell{this.undoCount});
+                this.updatePreview();
             catch
                 return
             end
@@ -159,7 +172,8 @@ classdef roiManager < handle
 
             this.undoCell{this.undoCount} = this.image3D;
             
-            this.imgViewer.setImages(this.undoCell{this.undoCount});
+            this.imgViewer.setImg3D(this.undoCell{this.undoCount});
+            this.updatePreview();
         end
 
         function confirmROI(this)

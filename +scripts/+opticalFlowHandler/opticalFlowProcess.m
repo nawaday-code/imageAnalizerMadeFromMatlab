@@ -3,56 +3,61 @@ classdef opticalFlowProcess < handle
     properties (SetAccess = private, GetAccess=public)
         baseFigure
         basePanel
+        imgWidth
+        imgHeight
         imgSource
         medianFiltered
         manualROI
         binaryMask
-%         threshold
 
         manualROIImg
         binaryMaskImg
         opticalFlowImg
-        
+        fusionedImg
     end
     
     methods (Access = public)
-        function this = opticalFlowProcess(constractParam)
+        function this = opticalFlowProcess(constructParam)
             arguments
-                constractParam.figure = []
-                constractParam.parent = []
-                constractParam.image3D = []
+                constructParam.figure = []
+                constructParam.parent = []
+                constructParam.image3D = []
+                constructParam.imageWidth = []
+                constructParam.imageHeight = []
             end
 
-            if isempty(constractParam.figure)&&isempty(constractParam.parent)
+            if isempty(constructParam.figure)&&isempty(constructParam.parent)
                 this.baseFigure = uifigure( ...
                     'Position',[30,30,1200,650]);
                 availableArea = this.baseFigure.InnerPosition;
                 this.basePanel = uipanel(this.baseFigure, ...
                     'Position', [0,0,availableArea(3),availableArea(4)]);
-            elseif isempty(constractParam.figure)&& ~isempty(constractParam.parent)
+            elseif isempty(constructParam.figure)&& ~isempty(constructParam.parent)
                 error('parentのみを指定することはできません')
-            elseif ~isempty(constractParam.figure) && isempty(constractParam.parent)
-                this.baseFigure = constractParam.figure;
+            elseif ~isempty(constructParam.figure) && isempty(constructParam.parent)
+                this.baseFigure = constructParam.figure;
                 availableArea = this.baseFigure.InnerPosition;
                 this.basePanel = uipanel(this.baseFigure, ...
                     'Position',[0,0,availableArea(3),availableArea(4)]);
-            elseif ~isempty(constractParam.figure) && ~isempty(constractParam.parent)
-                this.baseFigure = constractParam.figure;
+            elseif ~isempty(constructParam.figure) && ~isempty(constructParam.parent)
+                this.baseFigure = constructParam.figure;
                 availableArea = this.baseFigure.InnerPosition;
-                this.basePanel = uipanel(constractParam.parent, ...
+                this.basePanel = uipanel(constructParam.parent, ...
                     'Position',[0,0,availableArea(3),availableArea(4)]);
             else
                 error('予期せぬ引数指定がされています')
             end
 
-
-
             createProcessComponents(this);
+          
+            this.imgWidth = constructParam.imageWidth;
+            this.imgHeight = constructParam.imageHeight;
 
-            if ~isempty(constractParam.image3D)
-                this.setImg(constractParam.image3D, "setTo",'raw');
+            if ~isempty(constructParam.image3D)
+                this.setImg(constructParam.image3D, "setTo",'raw');
             end
-
+  
+            disp(this)
         end
 
         function setImg(this, img3D, option)
@@ -62,6 +67,7 @@ classdef opticalFlowProcess < handle
                 option.setTo string = 'raw'
             end
 
+
             switch option.setTo
                 case 'raw'
                     this.imgSource = img3D;
@@ -69,16 +75,27 @@ classdef opticalFlowProcess < handle
                     this.setImg(medianImg, "setTo",'medianFiltered');
                 case 'medianFiltered'
                     this.medianFiltered = img3D;
-                    this.medianFilteredView.setImages(img3D);
+                    this.medianFilteredView.setImg3D(img3D);
+                    disp(this)
+                    this.medianFilteredView.setImgMtx(this.imgWidth, this.imgHeight);
                 case 'manualROI'
                     this.manualROIImg = img3D;
-                    this.manualROIView.setImages(img3D);
+                    this.manualROIView.setImg3D(img3D);
+                    this.manualROIView.setImgMtx(this.imgWidth, this.imgHeight);
                 case 'binaryMask'
                     this.binaryMaskImg = img3D;
-                    this.binaryMaskImgView.setImages(img3D);
+                    this.binaryMaskImgView.setImg3D(img3D);
+                    this.binaryMaskImgView.setImgMtx(this.imgWidth, this.imgHeight);
                 case 'opticalFlow'
-                    this.opticalFlowImg = img3D;
-                    this.opticalflowView.setImages(img3D);
+   
+
+                    this.opticalflowView.setGrayImg3D(this.medianFiltered);
+                    this.opticalflowView.setFlowImg3D(img3D);
+                    this.opticalflowView.setColorArea3D(this.binaryMask.binaryArea);
+                    this.opticalflowView.setImgMtx(this.imgWidth, this.imgHeight);
+
+                    this.opticalflowView.fusioning();
+                    this.fusionedImg = this.opticalflowView.fusionedImg3D;
             end
         end
 
@@ -119,13 +136,29 @@ classdef opticalFlowProcess < handle
                 'Position', [opticalFlowAnchor(1),opticalFlowAnchor(2),blockWidth, blockHeight]);
 
 
-            this.medianFilteredView = scripts.imageViewer.guiImageViewer("figure",this.baseFigure, "parent", medianFilteredPanel);
+            this.medianFilteredView = scripts.imageViewer.guiImageViewer( ...
+                "figure",this.baseFigure, ...
+                "parent", medianFilteredPanel, ...
+                "imageWidth", this.imgWidth, ...
+                "imageHeight", this.imgHeight);
             
-            this.manualROIView = scripts.imageViewer.guiImageViewer("figure", this.baseFigure, "parent", manualROIPanel);
+            this.manualROIView = scripts.imageViewer.guiImageViewer( ...
+                "figure", this.baseFigure, ...
+                "parent", manualROIPanel, ...
+                "imageWidth", this.imgWidth, ...
+                "imageHeight", this.imgHeight);
 
-            this.binaryMaskImgView = scripts.imageViewer.guiImageViewer("figure", this.baseFigure, "parent", binaryMaskImgPanel);
+            this.binaryMaskImgView = scripts.imageViewer.guiImageViewer( ...
+                "figure", this.baseFigure, ...
+                "parent", binaryMaskImgPanel, ...
+                "imageWidth", this.imgWidth, ...
+                "imageHeight", this.imgHeight);
 
-            this.opticalflowView = scripts.imageViewer.opticalFlowViewer("figure", this.baseFigure, "parent", opticalflowPanel);
+            this.opticalflowView = scripts.imageViewer.opticalFlowViewer( ...
+                "figure", this.baseFigure, ...
+                "parent", opticalflowPanel, ...
+                "imageWidth", this.imgWidth, ...
+                "imageHeight", this.imgHeight);
 
             areaWidth = 650;
             areaHeight = 500;
@@ -148,8 +181,6 @@ classdef opticalFlowProcess < handle
             uibutton(manualROIsetArea, ...
                 "Position", [250, 20, buttonWidth, buttonHeight],"Text",sprintf('ROI選択'), ...
                 "ButtonPushedFcn",@(src, event)roiSetManually(this));
-%             uibutton(manualROIsetArea, ...
-%                 "Position", [400, 20, buttonWidth, buttonHeight],"Text",sprintf('確定'));
 
             uilabel(binaryMaskImgsetArea, ...
                 "Text",sprintf("ヒストグラム上で閾値を設定し、よりROIを細かく設定します。\n" + ...
@@ -186,7 +217,10 @@ classdef opticalFlowProcess < handle
         end
 
         function roiSetManually(this)
-            this.manualROI = scripts.measureTools.roiManager("image3D", this.imgSource);
+            this.manualROI = scripts.measureTools.roiManager( ...
+                "image3D", this.imgSource, ...
+                "imageWidth", this.imgWidth, ...
+                "imageHeight", this.imgHeight);
             addlistener(this.manualROI, 'confirmed', @(src, event)acceptROIData(this));
             function acceptROIData(this)
                 this.setImg(this.manualROI.roiResult, 'setTo', 'manualROI');
@@ -202,7 +236,10 @@ classdef opticalFlowProcess < handle
         end
 
         function makeBinaryMaskImg(this)
-            this.binaryMask = scripts.measureTools.binaryMaskManager("image3D", this.manualROIImg);
+            this.binaryMask = scripts.measureTools.binaryMaskManager( ...
+                "image3D", this.manualROIImg, ...
+                "imageWidth", this.imgWidth, ...
+                "imageHeight", this.imgHeight);
             addlistener(this.binaryMask, 'confirmed', @(src, event)acceptBinaryMaskData(this));
             function acceptBinaryMaskData(this)
                 this.setImg(this.binaryMask.binaryMaskResult, 'setTo', 'binaryMask');
@@ -218,10 +255,8 @@ classdef opticalFlowProcess < handle
                 flow = estimateFlow(optFlowLK, this.binaryMask.binaryMaskResult(:,:,i));
                 this.opticalFlowImg(:,:,i) = flow.Magnitude;
             end
-
-            testImg = partlyColorFusion3D(this.imgSource, this.opticalFlowImg, this.binaryMask.binaryArea);
-
-            this.setImg(testImg, "setTo", 'opticalFlow');
+            
+            this.setImg(this.opticalFlowImg, "setTo", 'opticalFlow');
         end
 
 

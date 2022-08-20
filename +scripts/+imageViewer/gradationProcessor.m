@@ -33,9 +33,9 @@ classdef gradationProcessor < scripts.measureTools.nobinHistogrammer
             if isempty(this.xMin) && isempty(this.xMax)
                 this.xMin = this.baseXMin;
                 this.xMax = this.baseXMax;
+                this.applyToneCurve();
             end
             createBoundsSetLine(this);
-            this.applyToneCurve();
         end
 
         function set3DData(this, array3D)
@@ -66,7 +66,7 @@ classdef gradationProcessor < scripts.measureTools.nobinHistogrammer
             
             %下限上限を一定値で飽和
             saturated = max(0, min(255, convertedByGOGToneCurve));
-            
+
             %元データの数値を入れ替える
             this.gradated = uint8(round(reshape(saturated(this.sourceValuePosition), this.sourceShape)));
             convertedData = this.gradated;
@@ -92,8 +92,8 @@ classdef gradationProcessor < scripts.measureTools.nobinHistogrammer
 
     methods(Access = private)
         function createBoundsSetLine(this)
-            try
-                if isempty(this.sourceArray)
+%             try
+                if isempty(this.sourceArray3D)
                     error('ヒストグラムデータがセットされていません');
                     
                 end
@@ -104,10 +104,10 @@ classdef gradationProcessor < scripts.measureTools.nobinHistogrammer
                 this.minLine = xline(this.histAx, this.xMin, ...   
                     'LineWidth',2,...
                     'ButtonDownFcn',@(src, evevnt) grabMinMaxLine(src, this));
-            catch
-                msgbox(sprintf('boundsLineが作成出来ませんでした\n'))
-                return
-            end
+%             catch
+%                 msgbox(sprintf('boundsLineが作成出来ませんでした\n'))
+%                 return
+%             end
             function grabMinMaxLine(src, ~)
                 
                 try

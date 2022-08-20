@@ -19,6 +19,8 @@ classdef DICOMHandler < handle
 %         imageCells = {}
         dcmInfoBook = [];
         image3D = [];
+        imgRows
+        imgColumns
     end
 
     methods (Access = public)
@@ -161,19 +163,12 @@ classdef DICOMHandler < handle
             parfor (i = 1:this.dcmFileNum)% M=〇でスレッド数を設定できる
                 dcminfos(:,:,i)= dicominfo(paths(i));
             end
-%             this.dcmInfoCells = dcminfos;
+            this.imgRows = dcminfos(:,:,1).Rows;
+            this.imgColumns = dcminfos(:,:,1).Columns;
             this.dcmInfoBook = dcminfos;
         end
         
         function imgs = readAllImage(this)
-%             if isempty(this.dcmInfoCells)
-%                 readAllDcmInfo(this);
-%             end
-%             infoCells = this.dcmInfoCells;
-%             parfor (i = 1:this.dcmFileNum)
-%                 imgs{i} = scripts.dicomHandler.scaling(infoCells{i});
-%             end
-%             this.imageCells = imgs;
 
             if isempty(this.dcmInfoBook)
                 readAllDcmInfo(this);

@@ -6,6 +6,8 @@ classdef binaryMaskManager < handle
         baseFigure
         parent
         image3D
+        imgWidth
+        imgHeight
         imgViewer
         histogrammer
         threshold
@@ -20,39 +22,46 @@ classdef binaryMaskManager < handle
     end
     
     methods (Access = public)
-        function this = binaryMaskManager(constractParam)
+        function this = binaryMaskManager(constructParam)
             %   詳細説明をここに記述
             arguments
-                constractParam.figure = []
-                constractParam.parent = []
-                constractParam.image3D = []
+                constructParam.figure = []
+                constructParam.parent = []
+                constructParam.image3D = []
+                constructParam.imageWidth = -1
+                constructParam.imageHeight = -1
             end
 
-            if isempty(constractParam.figure)&&isempty(constractParam.parent)
+            if isempty(constructParam.figure)&&isempty(constructParam.parent)
                 this.baseFigure = uifigure('Position',[50,50,1200,700]);
                 this.parent = this.baseFigure;
-            elseif isempty(constractParam.figure)&& ~isempty(constractParam.parent)
+            elseif isempty(constructParam.figure)&& ~isempty(constructParam.parent)
                 error('parentのみを指定することはできません')
-            elseif ~isempty(constractParam.figure) && isempty(constractParam.parent)
-                this.baseFigure = constractParam.figure;
+            elseif ~isempty(constructParam.figure) && isempty(constructParam.parent)
+                this.baseFigure = constructParam.figure;
                 this.parent = this.baseFigure;
-            elseif ~isempty(constractParam.figure) && ~isempty(constractParam.parent)
-                this.baseFigure = constractParam.figure;
-                this.parent = constractParam.parent;
+            elseif ~isempty(constructParam.figure) && ~isempty(constructParam.parent)
+                this.baseFigure = constructParam.figure;
+                this.parent = constructParam.parent;
             else
                 error('予期せぬ引数指定がされています')
             end
 
-            if isempty(constractParam.image3D)
+            if isempty(constructParam.image3D)
                 this.image3D = ones([100,100,3]);
             else
-                this.image3D = constractParam.image3D;
+                this.image3D = constructParam.image3D;
             end
+
+
+            this.imgWidth = constructParam.imageWidth;
+            this.imgHeight = constructParam.imageHeight;
 
             createComponents(this);
             
         end
-        
+
+
     end
 
     methods (Access = private)
@@ -63,11 +72,13 @@ classdef binaryMaskManager < handle
             this.imgViewer = scripts.imageViewer.guiImageViewer( ...
                 "figure",this.baseFigure, ...
                 "parent", previewPanel, ...
-                "image3D", this.image3D);
+                "image3D", this.image3D, ...
+                "imageWidth",this.imgWidth, ...
+                "imageHeight", this.imgHeight);
             this.histogrammer = scripts.measureTools.binaryMaskHistogrammer( ...
                 "baseFig", this.baseFigure, ...
                 "Position", [round(availableArea(3)*3/5), round(availableArea(4)*1/2)-20, round(availableArea(3)*2/5), round(availableArea(4)* 3/7)]);
-            this.histogrammer.setData(this.image3D);
+            this.histogrammer.set3DData(this.image3D);
             addlistener(this.histogrammer, 'changeThreshold', @(src, event)makeBinaryMaskImg(this));
 
             buttonWidth = 100;
@@ -88,7 +99,9 @@ classdef binaryMaskManager < handle
             this.binaryArea(this.binaryArea < this.threshold) = 0;
             this.binaryArea(this.binaryArea ~= 0) = 1;
             this.binaryMaskResult = this.image3D .* this.binaryArea;
-            this.imgViewer.setImages(this.binaryMaskResult);
+            this.imgViewer.setImg3D(this.binaryMaskResult);
+            this.imgViewer.gradationer.applyToneCurve;
+            this.imgViewer.drawImg();
         end
 
         function confirmBinaryMask(this)

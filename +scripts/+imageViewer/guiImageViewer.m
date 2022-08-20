@@ -3,7 +3,7 @@
 ・プレビュー上でマウスホイールを転がすとスライスが変えられる機能
 ・プレビュー上でドラッグすることでウィンドウ調整ができる機能
 ・プレニュー上にあるマウスポインタの位置における信号値を表示する機能
-・簡易ROI測定機能
+
 
 
 #################################
@@ -17,7 +17,10 @@ classdef guiImageViewer < handle
     properties (Access=public)
         baseFigure
         parent
-        image3D = []
+        sourceImg3D = []
+        gradatedImg3D = [];
+        imgWidth = []
+        imgHeight = []
 
         windowWidthHalf
         windowLevel
@@ -25,7 +28,7 @@ classdef guiImageViewer < handle
         currentWindowMin
         currentWindowMax
 
-        sliceNumber
+        sliceNumber = 1
         currentDisplaySource
         currentPreview
 
@@ -43,6 +46,8 @@ classdef guiImageViewer < handle
                 constructParam.parent = []
                 constructParam.isReadingDICOM = false
                 constructParam.image3D = []
+                constructParam.imageWidth = []
+                constructParam.imageHeight = []
             end
 
             if isempty(constructParam.figure)&&isempty(constructParam.parent)
@@ -60,48 +65,58 @@ classdef guiImageViewer < handle
                 error('予期せぬ引数指定がされています')
             end
 
-            %↓うまくいかないのでやめました
-            %Figureグラフィックオブジェクトを見つけるまでparent階層をあがって検索するつもりです
-%             parentPosition = parent.InnerPosition;
-%             this.baseFigure = findobj(parent, 'type', 'figure');
-%             this.basePanel = uipanel(parent,"Position",parentPosition);
+
 
             allocateArea(this);
 
             createPreviewComponents(this);
             createHistComponents(this);
-            
-
-
             %引数オプションで、下2つはいずれかしか選択できないのであえてこの書き方にしています
+            %かならずcomponentsをインスタンス化してから以下を実行するようにしてください
             if constructParam.isReadingDICOM
                 dcmHandler = scripts.dicomHandler.DICOMHandler();
                 dcmHandler.readDICOMDIR();
-                this.image3D = dcmHandler.readAllImage();
-
-                this.mountDisplay();
+                this.setImg3D(dcmHandler.readAllImage());
                 this.spawnWindowChangeListener(this.gradationer);
             elseif ~isempty(constructParam.image3D)
-                this.image3D = constructParam.image3D;
+                this.setImg3D(constructParam.image3D);
 
-                this.mountDisplay();
                 this.spawnWindowChangeListener(this.gradationer);
             end
-            
+
+            this.setImgMtx(constructParam.imageWidth, constructParam.imageHeight);
+
 
         end
 
-        function setImages(this, image3D)
-            this.image3D = image3D;
-            this.mountDisplay();
-            drawnow;
+        function setImg3D(this, image3D)
+            this.sourceImg3D = image3D;
+            set(this.sliceSlider, 'Limits', [1, size(this.sourceImg3D, 3)]);
+            this.gradationer.set3DData(this.sourceImg3D);
+            this.gradatedImg3D = this.gradationer.gradated;
+            this.drawImg();
         end
 
-        function updateImage(this)
-            this.gradationer.setData(this.currentDisplaySource);
-            this.currentPreview = this.gradationer.applyToneCurve();
-            this.preview = imshow(this.currentPreview, 'Parent',this.previewAx);
-            drawnow;
+        function setImgMtx(this, imgWidth, imgHeight)
+            this.imgWidth = imgWidth;
+            this.imgHeight = imgHeight;
+            if isempty(imgWidth)&& isempty(imgHeight)
+                return
+            end
+            this.aspectRatioCheckBox.Enable = 'on';
+            this.changeViewAspectRatio(this.aspectRatioCheckBox);
+        end
+
+        function drawImg(this)
+            this.preview = imshow(this.gradatedImg3D(:,:,this.sliceNumber), ...
+                'Parent', this.previewAx);
+            drawnow
+        end
+
+        function changeWindow(this)
+            this.gradationer.applyToneCurve();
+            this.gradatedImg3D = this.gradationer.gradated;
+            this.drawImg();
         end
 
         function previewAx = getPreviewAx(this)
@@ -116,14 +131,14 @@ classdef guiImageViewer < handle
 
 
     properties (Access = private)
-%         previewPanel
-%         histPanel
         previewPos
         histPos
 
         previewAx
         preview
         sliceSlider
+
+        aspectRatioCheckBox
     end
 
     methods(Access = private)
@@ -134,17 +149,9 @@ classdef guiImageViewer < handle
         end
 
 
-        function mountDisplay(this)
-            this.currentDisplaySource = this.image3D(:,:,1);
-            this.gradationer.setData(this.currentDisplaySource);
-            this.updateImage();
-            set(this.sliceSlider, 'Limits', [1, size(this.image3D, 3)]);
-            
-        end
-
         function spawnWindowChangeListener(this, nobinHistogrammerInstance)
             addlistener(nobinHistogrammerInstance, ...
-                'changeArea', @(src, event) updateImage(this));
+                'changeArea', @(src, event) changeWindow(this));
         end
 
         function createPreviewComponents(this)
@@ -155,21 +162,37 @@ classdef guiImageViewer < handle
 
             uilabel(this.parent, ...
                 "Text", "slice", ...
-                "Position", [this.previewPos(1)+this.previewPos(4)+30 ,this.previewPos(2)+this.previewPos(4)*11/12,30,20]);
+                "Position", [this.previewPos(1)+this.previewPos(4)+30 ,this.previewPos(2)+this.previewPos(4)*9/10,30,20]);
             this.sliceSlider = uislider(this.parent, ...
-                "Position",[this.previewPos(1)+this.previewPos(4)+30, this.previewPos(2)+20, this.previewPos(4)*6/7,3], ...
+                "Position",[this.previewPos(1)+this.previewPos(4)+30, this.previewPos(2)*1.125, this.previewPos(4)*6/7,3], ...
                 "Orientation","vertical", ...
                 "ValueChangingFcn",@(this, event) sliceChanging(event));
+
+            this.aspectRatioCheckBox = uicheckbox(this.parent, ...
+                "Value",0, ...
+                'Enable','off', ...
+                'Position',[this.previewPos(1)+this.previewPos(4)+30, this.previewPos(2)+this.previewPos(4)*15/16,84,22], ...
+                'ValueChangedFcn',@(src, event)changeViewAspectRatio(this, src), ...
+                'Text',sprintf('fill'));
 
             %%%%%%% Call Back Functions %%%%%%
         
     
             function sliceChanging(event)
                 this.sliceNumber = round(event.Value);
-                this.currentDisplaySource = this.image3D(:,:,this.sliceNumber);
                 notify(this, 'changeSlice');
-                this.updateImage();
+                this.drawImg();
             end
+        end
+
+        function changeViewAspectRatio(this, src)
+            switch src.Value
+                case 0
+                    set(this.previewAx, 'DataAspectRatio', [this.imgWidth, this.imgHeight, 1]);
+                case 1
+                    set(this.previewAx, 'DataAspectRatio', [1, 1, 1]);
+            end
+            this.drawImg()
         end
 
         function createHistComponents(this)
@@ -177,6 +200,7 @@ classdef guiImageViewer < handle
                 'parent', this.parent, ...
                 'baseFig', this.baseFigure, ...
                 'Position', [this.histPos(1), this.histPos(2), this.histPos(3), this.histPos(4)]);
+            class(this.gradationer)
         end
 
     end
