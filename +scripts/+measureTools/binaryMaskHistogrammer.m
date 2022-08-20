@@ -30,6 +30,14 @@ classdef binaryMaskHistogrammer < scripts.measureTools.nobinHistogrammer
             end
             createThresholdLine(this);
         end
+
+        function set3DData(this, array3D)
+            set3DData@scripts.measureTools.nobinHistogrammer(this, array3D);
+            if isempty(this.threshold)
+                this.threshold = mean(this.histX);
+            end
+            createThresholdLine(this);
+        end
     end
 
     properties(SetAccess=private, GetAccess=public)
@@ -38,19 +46,19 @@ classdef binaryMaskHistogrammer < scripts.measureTools.nobinHistogrammer
 
     methods(Access = private)
         function createThresholdLine(this)
-            try
-                if isempty(this.sourceArray)
+%             try
+                if isempty(this.sourceArray3D)
                     error('ヒストグラムデータがセットされていません');
                 end
     
                 this.thresholdLine = xline(this.histAx, this.threshold, ...
                     'LineWidth', 2);
                 set(this.histAx, "ButtonDownFcn", @(src, event) grabThreshLine(this));
-            catch
-                msgbox('thresholdLineが作成出来ませんでした\n')
-                
-                return
-            end
+%             catch
+%                 msgbox('thresholdLineが作成出来ませんでした\n')
+%                 
+%                 return
+%             end
 
             function grabThreshLine(this)
                 iptaddcallback(this.baseFig, ...
