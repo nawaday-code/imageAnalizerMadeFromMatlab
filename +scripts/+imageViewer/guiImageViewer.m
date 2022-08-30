@@ -22,15 +22,7 @@ classdef guiImageViewer < handle
         imgWidth = []
         imgHeight = []
 
-        windowWidthHalf
-        windowLevel
-
-        currentWindowMin
-        currentWindowMax
-
         sliceNumber = 1
-        currentDisplaySource
-        currentPreview
 
         gradationer
     end
@@ -127,6 +119,12 @@ classdef guiImageViewer < handle
             imgObj = this.preview;
         end
 
+
+        function spawnWindowChangeListener(this, nobinHistogrammerInstance)
+            addlistener(nobinHistogrammerInstance, ...
+                'changeArea', @(src, event) changeWindow(this));
+        end
+
     end
 
 
@@ -149,10 +147,6 @@ classdef guiImageViewer < handle
         end
 
 
-        function spawnWindowChangeListener(this, nobinHistogrammerInstance)
-            addlistener(nobinHistogrammerInstance, ...
-                'changeArea', @(src, event) changeWindow(this));
-        end
 
         function createPreviewComponents(this)
             this.previewAx = uiaxes(this.parent, ...
@@ -200,7 +194,6 @@ classdef guiImageViewer < handle
                 'parent', this.parent, ...
                 'baseFig', this.baseFigure, ...
                 'Position', [this.histPos(1), this.histPos(2), this.histPos(3), this.histPos(4)]);
-            class(this.gradationer)
         end
 
     end
