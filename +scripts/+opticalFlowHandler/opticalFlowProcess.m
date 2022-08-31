@@ -1,5 +1,9 @@
 classdef opticalFlowProcess < handle
 
+    events
+        confirmFlowAnalysis
+    end
+
     properties (SetAccess = private, GetAccess=public)
         baseFigure
         basePanel
@@ -57,7 +61,6 @@ classdef opticalFlowProcess < handle
                 this.setImg(constructParam.image3D, "setTo",'raw');
             end
   
-            disp(this)
         end
 
         function setImg(this, img3D, option)
@@ -212,7 +215,9 @@ classdef opticalFlowProcess < handle
                 "この結果を出力する場合は出力ボタンを押してください。"), ...
                 "Position",[150, 150, 600, 300]);
             uibutton(resultdealArea, ...
-                "Position", [250, 20, buttonWidth, buttonHeight],"Text",sprintf('出力'));
+                "Position", [250, 20, buttonWidth, buttonHeight], ...
+                "Text",sprintf('出力'), ...
+                "ButtonPushedFcn", @(src, event)outputHandler(this));
             
         end
 
@@ -259,6 +264,9 @@ classdef opticalFlowProcess < handle
             this.setImg(this.opticalFlowImg, "setTo", 'opticalFlow');
         end
 
+        function outputHandler(this)
+            notify(this, 'confirmFlowAnalysis');
+        end
 
     end
 

@@ -38,9 +38,9 @@ classdef opticalFlowViewer < handle
                 constructParam.parent = []
                 constructParam.grayImg3D = []
                 constructParam.flowImg3D = []
-                constructParam.fusionedImg3D = []
-                constructParam.imageWidth = -1
-                constructParam.imageHeight = -1
+%                 constructParam.fusionedImg3D = []
+                constructParam.imageWidth = 1
+                constructParam.imageHeight = 1
             end
 
             if isempty(constructParam.figure)&&isempty(constructParam.parent)
@@ -60,7 +60,7 @@ classdef opticalFlowViewer < handle
 
             this.graySourceImg3D = constructParam.grayImg3D;
             this.flowSourceImg3D = constructParam.flowImg3D;
-            this.fusionedImg3D = constructParam.fusionedImg3D;
+%             fileExistSequence = [~isempty(this.graySourceImg3D), ~isempty(this.flowSourceImg3D)];
 
             this.allocateArea();
             this.createComponents();
@@ -70,7 +70,20 @@ classdef opticalFlowViewer < handle
 
             this.setImgMtx(constructParam.imageWidth, constructParam.imageHeight);
 
+%             if isequal(fileExistSequence, [1,1])
+%                 this.changeWindow();
+%             else
+%                 msgbox(sprintf('fileExistSequence: [%d, %d]', fileExistSequence(1), fileExistSequence(2)))
+%             end
+
+
         end
+
+        function updateFusion(this)
+            this.fusioning();
+            this.drawImg();
+        end
+
 
         function drawImg(this)
             this.preview = imshow(this.fusionedImg3D(:,:,:,this.sliceNumber), ...
@@ -112,9 +125,9 @@ classdef opticalFlowViewer < handle
         end
 
         function fusioning(this)
-
-            if isempty(this.grayGradatedImg3D) || isempty(this.flowGradatedImg3D) || isempty(this.colorArea3D)
-               error('rack of data');
+            rackSequence = [~isempty(this.grayGradatedImg3D) , ~isempty(this.flowGradatedImg3D) , ~isempty(this.colorArea3D)];
+            if ~isequal(rackSequence, [1,1,1])
+               error('rack of data\n ErrorSequence: [%d, %d, %d]', rackSequence(1), rackSequence(2), rackSequence(3));
             end
 
             this.grayGradationer.applyToneCurve();
@@ -144,8 +157,7 @@ classdef opticalFlowViewer < handle
             replacedR =  rescaledGrayImg;
             replacedG =  rescaledGrayImg;
             replacedB =  rescaledGrayImg;
-        
-            load('colormap_jet.mat', 'cmap');
+            load("+materials\colormap_jet.mat", 'cmap');
             [category, ~, sourceValuePosition] = unique(colorImg3D);
             
             rConverted = cmap.R(category+1);
@@ -160,9 +172,13 @@ classdef opticalFlowViewer < handle
             replacedG(colorArea3D) = gImg(colorArea3D); 
             replacedB(colorArea3D) = bImg(colorArea3D); 
         
-            testRGB = permute(cat(4, replacedR, replacedG, replacedB), [1, 2, 4, 3]);
-        
-            img = testRGB;
+            img= permute(cat(4, replacedR, replacedG, replacedB), [1, 2, 4, 3]);
+       
+        end
+
+        function spawnWindowChangeListener(this, histogrammerInstance)
+            addlistener(histogrammerInstance, ...
+                'changeArea', @(src, event) updateFusion(this));
         end
 
 
@@ -191,15 +207,8 @@ classdef opticalFlowViewer < handle
             this.flowHistPos = [0,0,availableArea(3), round(availableArea(4)*1/8)];
         end
 
-        function spawnWindowChangeListener(this, histogrammerInstance)
-            addlistener(histogrammerInstance, ...
-                'changeArea', @(src, event) changeWindow(this));
-        end
 
-        function changeWindow(this)
-            this.fusioning();
-            this.drawImg();
-        end
+
 
         function createComponents(this)
             this.previewAx = uiaxes(this.parent, ...
